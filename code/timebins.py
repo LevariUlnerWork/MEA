@@ -1,3 +1,23 @@
+#!/usr/bin/env python3
+# --*-- coding:utf-8 --*--
+
+"""
+This module reads a spike list form a csv file in the form of time-stamps and,
+given a time gate T, it calculates the mean number of spikes per time gate 
+and its variance.  
+"""
+
+# Owned
+__author__ = "Or Nahmani"
+__email__ = "ornahm@post.bgu.ac.il"
+__company__ = "NIBN, Ben-Gurion University of the Negev"
+__date__ = "20/03/2020"
+__license__ = "MIT License"
+__copyright__ = "Copyright 2020, NIBN, Israel"
+__status__ = "Dev"
+__credits__ = [__author__]
+__version__ = "0.1.0"
+   
 import numpy as np
 import sys
 import csv
@@ -9,17 +29,21 @@ TIMESTAMP_IND = 2
 
 def parse_spikes_list(path):
     # Gets path of axion's _spike_list.csv file and returns a dict of electrode: list of spike timestamps
-    with open(path) as spikesfile:
-        # Theres a footer 9 lines long. first line is the fields.  <- not very generic...
-        data = np.loadtxt(spikesfile.readlines()[1:-9], dtype="str", delimiter=",")
-        # Get last spike's timestamp to use as the sample time.
-        last_spike = float(data[-1][TIMESTAMP_IND])
-        electrodes = set(data[:, ELECTRODE_IND])
-        # Initialize spikes dict
-        electrode_spikes = {elec:[] for elec in electrodes}
-        for row in data:
-            electrode_spikes[row[ELECTRODE_IND]].append(float(row[TIMESTAMP_IND]))
-        return electrode_spikes, last_spike
+    try:
+        with open(path) as spikesfile:
+            #Theres a footer 9 lines long. first line is the fields.  <- not very generic...
+            data = np.loadtxt(spikesfile.readlines()[1:-9], dtype="str", delimiter=",")
+            # Get last spike's timestamp to use as the sample time.
+            last_spike = float(data[-1][TIMESTAMP_IND])
+            electrodes = set(data[:, ELECTRODE_IND])
+            # Initialize spikes dict
+            electrode_spikes = {elec:[] for elec in electrodes}
+            for row in data:
+                electrode_spikes[row[ELECTRODE_IND]].append(float(row[TIMESTAMP_IND]))
+    except IOError:
+        print("File not accessible")
+    
+    return electrode_spikes, last_spike
 
 
 # divide spikes_timestamps into timebins of size T and return the mean&std of spike count per bin
@@ -39,7 +63,7 @@ def main():
     if len(sys.argv)!=4:
         print("usage: script <spikes_list_path> <T> <output_file>")
         print("\t  spikes_list_path - axion's _spike_list.csv file path")
-        print("\t  T - timebin length in seconds")
+        print("\t  T - timebin width in seconds")
         print("\t  output_file - full path to output file")
         return
     spikes_dict, sample_time = parse_spikes_list(sys.argv[1])
