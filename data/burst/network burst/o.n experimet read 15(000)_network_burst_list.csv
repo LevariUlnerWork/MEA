@@ -1,0 +1,73 @@
+﻿Investigator,Lena and Yossi,Time (s),Well,Size (spikes),Duration (s),Number of Electrodes,Spikes per Electrode (avg),Spikes per Electrode (std)
+Recording Name,50k div20 cortex plate2 after infection overnight,00006.030400,A2,93,1.55872,6,15.5,23.077766
+Description,after infection overnight,00012.422240,C3,168,1.4004,8,21,15.724185
+,,00041.349760,A1,86,0.9584,6,14.333333,13.996032
+Maestro Edge Settings,,00043.695280,B5,65,0.24776,9,7.222222,7.083279
+   Original File Time,08/26/2020 21:32:59,00061.525600,B5,299,1.57472,10,29.9,36.683647
+   Sampling Frequency,12.5 kHz,00063.607840,B5,109,0.82336,8,13.625,14.738873
+   Voltage Scale,-5.48486178148311E-08 V/sample,00070.990720,C1,111,0.40936,10,11.1,8.537564
+   Experiment Start Time,08/25/2020 15:32:43,00083.771760,B4,56,0.72168,6,9.333333,9.249624
+   Referencing Method,Median,00091.336640,B1,181,1.14608,11,16.454545,29.475302
+   Analog Mode Setting,Neural Spikes,00096.506080,B6,78,1.55928,7,11.142857,10.411924
+   Plate Type,BioCircuit MEA 24,00139.848960,B5,67,0.28536,7,9.571429,8.226389
+   Digital Low Pass Filter,3 kHz Kaiser Window,00155.093120,B5,411,2.11104,10,41.1,57.848854
+   Digital High Pass Filter,200 Hz IIR,00160.561440,D2,92,0.84016,6,15.333333,12.064641
+   Temperature Set Point,37.0 Degrees C,00161.650720,D2,75,0.83504,6,12.5,13.162447
+   Current Temperature,37.0 Degrees C,00163.274000,C3,231,1.51464,7,33,18.708286
+   Heater Power,On,00222.640800,B5,69,0.3432,9,7.666667,8.232726
+   Barcode Plate Type,TwentyFourWellCircuit,00223.921760,B1,195,1.4004,10,19.5,35.677025
+   Plate Serial Number,66-1901,00224.483760,B5,202,0.77624,8,25.25,26.994213
+   CO2 Conc. Set Point,5.0 %,00242.636400,D5,76,0.32256,6,12.666667,9.122622
+   Actual CO2 Conc.,5.0 %,00247.115120,B5,55,0.31448,10,5.5,5.714018
+   Gas Mixer Status,Regulating,00248.696720,B5,133,0.59736,9,14.777778,15.732328
+   AxIS Version,3.0.3.2,00253.364880,B1,149,1.17984,11,13.545455,19.013697
+   Maestro Edge Firmware,3.0.3.2,00258.465840,A3,50,0.92936,6,8.333333,13.387391
+   Maestro Edge BioCore Version,4B,00261.919920,C1,105,0.28416,11,9.545455,8.294178
+,,00267.407760,B1,103,0.69248,9,11.444444,13.655371
+AxIS Batch Process,,00284.258240,B3,149,1.8132,7,21.285714,36.275589
+   AxIS Version,3.0.3.2,00289.273200,A2,73,0.72576,7,10.428571,18.297987
+   File Name,o.n experimet read 15.raw,00288.543280,B5,266,1.68936,10,26.6,28.531387
+   Plate Type,BioCircuit MEA 24,00292.911680,C1,83,0.24792,10,8.3,5.692978
+   Requested File Section,0s to 10m0s,00307.524880,B6,56,0.50176,6,9.333333,6.420454
+   Actual File Section Run,0s to 10m0s,00338.006640,D5,77,0.42928,6,12.833333,8.74484
+   Recording Offset from File Start,0s,00345.168560,B5,53,0.2548,9,5.888889,7.140564
+,,00348.481600,D2,94,1.19256,6,15.666667,11.382247
+Spike Detector Settings,,00357.230720,B4,59,0.64648,8,7.375,7.140335
+   Method,Adaptive Threshold Crossing,00365.224720,B5,389,1.87888,10,38.9,47.523575
+   Threshold,6,00371.967840,B1,147,0.78904,10,14.7,19.483582
+   Threshold Status,Variable,00375.102560,A3,55,1.0416,6,9.166667,15.236104
+   Threshold Crossing Only,True,00390.820080,B5,102,0.42904,9,11.333333,10.677078
+   Pre-Spike Duration,0.84 ms,00402.315040,C1,103,0.31464,9,11.444444,7.350149
+   Post-Spike Duration,2.16 ms,00403.126640,C3,392,1.9196,9,43.555556,41.036869
+   Coincident Event Filter,Default (Well),00405.384400,C3,64,0.6552,6,10.666667,8.319989
+   Coincidence Occurrence Threshold,4 Electrodes,00422.915200,D3,52,0.98536,6,8.666667,11.841546
+   Coincidence Event Window,160 µs,00451.122640,A1,76,0.85504,7,10.857143,11.993195
+   Allow Sample Overlap,false,00471.148720,D5,80,0.33536,7,11.428571,9.514757
+   Spike Count Interval,1 s,00479.114320,C3,83,0.50016,6,13.833333,7.289643
+,,00507.573840,B5,79,0.45584,9,8.777778,9.98641
+Burst Detector Settings,,00515.310160,B5,69,0.47008,9,7.666667,8.755951
+   Burst Detection Algorithm,Inter-Spike Interval (ISI) Threshold,00527.022080,B5,53,0.20016,10,5.3,7.085902
+   Maximum Inter-Spike Interval,100 ms,00527.027280,B1,191,1.19504,10,19.1,33.46476
+   Minimum Number of Spikes,5,00528.913520,C1,114,0.31456,10,11.4,8.991107
+   Enable Network Burst Detection,True,00539.220480,D2,52,0.53312,6,8.666667,6.046119
+   Maximum Inter-Spike Interval (network bursts),100 ms,00540.226160,B5,59,0.33848,8,7.375,6.872727
+   Minimum Number of Spikes (network bursts),50,00539.506560,A2,87,1.17984,7,12.428571,21.927525
+   Minimum Participating Electrodes (%),35,00550.038080,A2,53,0.89104,8,6.625,13.018617
+   Synchrony Window,20 ms,00557.490640,B5,55,0.228,9,6.111111,5.425136
+,,00558.600800,B5,279,1.11896,9,31,36.998497
+,,00559.825520,B5,219,0.9212,9,24.333333,37.982452
+,,00561.430800,B5,191,1.39584,9,21.222222,35.564583
+,,00565.152560,C3,72,0.49848,6,12,6.350853
+,,00571.852800,A3,56,0.83424,7,8,11.414277
+,,00579.791600,C3,57,0.34672,6,9.5,4.890467
+,,00579.954720,B6,73,0.84336,7,10.428571,7.943679
+,,00592.737120,B1,140,0.9628,7,20,27.229185
+
+Well Information
+Well,A1,A2,A3,A4,A5,A6,B1,B2,B3,B4,B5,B6,C1,C2,C3,C4,C5,C6,D1,D2,D3,D4,D5,D6
+Active,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True
+Well Coloring,#FFAF64,#FFAF64,#FFAF64,#00FF00,#00FF00,#00FF00,#FF96CA,#FF96CA,#FF96CA,#FFAF64,#FFAF64,#FFAF64,#FF9696,#FF9696,#FF9696,#FF00FF,#FF00FF,#FF00FF,#FF7474,#FF7474,#FF7474,#8F26FF,#8F26FF,#8F26FF
+Control,False,False,False,False,False,False,False,False,False,True,True,True,False,False,False,False,False,False,False,False,False,False,False,False
+Treatment,comtrol,comtrol,comtrol,PSD95 EGFP,PSD95 EGFP,PSD95 EGFP,control + DM,control + DM,control + DM,control ,control ,control ,AB 42 + DM,AB 42 + DM,AB 42 + DM,SEP GLUA1,SEP GLUA1,SEP GLUA1,AB 42 ,AB 42 ,AB 42 ,EGFP,EGFP,EGFP
+Concentration,,,,5 UL,5 UL,5 UL,,,,,,,,,,5 Ul,5 Ul,5 Ul,,,,5 UL,5 UL,5 UL
+Additional Information,control,control,control,,,,ofek,ofek,ofek,,,,Ofek,Ofek,Ofek,,,,Ofek,Ofek,Ofek,,,
