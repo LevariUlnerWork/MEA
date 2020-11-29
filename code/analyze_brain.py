@@ -517,7 +517,8 @@ def main():
 
         write_sheet(data1, Ts, wbSPK, wsSPK, wells_color, plate_type, treat, conc)
         write_sheet(data2, Ts, wbAMP, wsAMP, wells_color, plate_type, treat, conc)
-        
+
+
     print("...closing output files")
     wbSPK.close()
     wbAMP.close()
