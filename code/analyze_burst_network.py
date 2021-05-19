@@ -17,8 +17,8 @@ Things to note:
 """
 
 # Owned
-__author__ = "Or Nahmani" + ", Lev-Ari Ulner"
-__email__ = "ornahm@post.bgu.ac.il" + ", ulnerl@post.bgu.ac.il"
+__author__ = "Lev-Ari Ulner"
+__email__ = "ulnerl@post.bgu.ac.il"
 __company__ = "NIBN, Ben-Gurion University of the Negev"
 __date__ = "20/03/2020"
 __license__ = "MIT License"
@@ -49,9 +49,12 @@ import xlsxwriter
 
 #### AXION PARSING ####
 # spikes list file fields: ",,Time (s),Electrode,Amplitude (mV)"
+SPIKE_PER_ELEC_STD = 8
+SPIKE_PER_ELEC_AVG = 7
+NUM_OF_ELEC = 6
 DURATION_IND = 5
 SIZE_SPIKES_IND = 4
-ELECTRODE_IND = 3
+WELL_IND = 3
 TIMESTAMP_IND = 2
 N_PLATE_TYPE_24 = 4  # 16 elecs
 N_PLATE_TYPE_6 = 8  # 64 elecs
@@ -61,7 +64,7 @@ SPK_RATE_TOL = 1  # spikes/sec, tollerance for a "living" electrod
 
 REC_TIME_RE = '.* to ((?P<hr>\\d+)h)?((?P<min>\\d+)m)?(?P<sec>\\d+)s'
 FOOTER_RE = '^Well Information.*'
-LAST_DATA_LINE_RE = '.*,(?P<elec>[A-Z]\d_\d{2}),.*'
+LAST_DATA_LINE_RE = '.*,(?P<well>[A-Z]\d),(\d*),.*'
 REC_TIME_LINE_RE = '.*Actual File Section Run*'
 PLATE_TYPE_LINE_RE = '\s+Plate Type'
 TREAT_LINE_RE = 'Treatment'
@@ -129,11 +132,11 @@ def parse_axion_bursts_list(path):
         iline = 0
         didntShown = False
         print("The record time doesn't shown in the excel file")
-        lastTimeSec = int(float(lines[checker].split(',')[2]))+1
+        lastTimeSec = int(float(lines[checker].split(',')[2])) + 1
         firstTimeSec = int(float(lines[1].split(',')[2]))
         rec_time = lastTimeSec - firstTimeSec
         didntShown = True
-        #sys.exit('\n>>>>> ERROR: COULD NOT FIND RECORDING TIME (REQUESTED/ACTUAL DURATION OF MEASUREMENT)\n')
+        # sys.exit('\n>>>>> ERROR: COULD NOT FIND RECORDING TIME (REQUESTED/ACTUAL DURATION OF MEASUREMENT)\n')
         time_match = {}
         if(didntShown == False):
             time_match = re.match(REC_TIME_RE, lines[iline]).groupdict()
@@ -162,37 +165,48 @@ def parse_axion_bursts_list(path):
         for i in wells_color.keys():  # sort list of values per key
             wells_color[i].sort(key=lambda s: s[::-1])
 
-        electrodes = set(data[:, ELECTRODE_IND])
+        wellsList = set(data[:, WELL_IND])
 
-        # Assuming all wells are the same (containing same electrodes alignment)
-        elecs_per_well = {elec[-2:] for elec in electrodes}
-        wells = {elec[:2] for elec in electrodes}
+        wells = {well for well in wellsList}
 
-        # Initialize spikes dict for all electrodes
-        elecs = {elec: [] for elec in elecs_per_well}
         # import pdb; pdb.set_trace()
-        timestamps_lists = {well: copy.deepcopy(elecs) for well in wells}
-        bursts_lists = {well: copy.deepcopy(elecs) for well in wells}
-        durations_lists = {well: copy.deepcopy(elecs) for well in wells}
+        timestamps_lists = {well: [] for well in wells}
+        bursts_lists = {well: [] for well in wells}
+        durations_lists = {well: [] for well in wells}
+        number_of_elec_lists = {well: [] for well in wells}
+        spikes_per_elec_avg_lists = {well: [] for well in wells}
+        spikes_per_elec_std_lists = {well: [] for well in wells}
         SAMPLE_DELAY = float(data[1][TIMESTAMP_IND])
         SAMPLE_DELAY = float('%.1f' % (SAMPLE_DELAY))
         for row in data:
-            well, elec = row[ELECTRODE_IND].split('_')
+            well = row[WELL_IND]
             ts = float(row[TIMESTAMP_IND]) - SAMPLE_DELAY # SAMPLE_DELAY made to reset the time
             size = float(row[SIZE_SPIKES_IND])
             duration = float(row[DURATION_IND])
-            timestamps_lists[well][elec].append(ts)
-            bursts_lists[well][elec].append(size)
-            durations_lists[well][elec].append(duration)
+            number_of_elec = float(row[NUM_OF_ELEC])
+            spikes_per_elec_avg = float(row[SPIKE_PER_ELEC_AVG])
+            spikes_per_elec_std = float(row[SPIKE_PER_ELEC_STD])
+            timestamps_lists[well].append(ts)
+            bursts_lists[well].append(size)
+            durations_lists[well].append(duration)
+            number_of_elec_lists[well].append(number_of_elec)
+            spikes_per_elec_avg_lists[well].append(spikes_per_elec_avg)
+            spikes_per_elec_std_lists[well].append(spikes_per_elec_std)
 
         # Convert to numpy arrays for further proccessing. this is not done initially because np.append copies the array.
-        for well in wells:
-            timestamps_lists[well] = {elec: np.array(br_list) for elec, br_list in timestamps_lists[well].items() if
-                                      br_list != []}
-            bursts_lists[well] = {elec: np.array(br_list) for elec, br_list in bursts_lists[well].items() if
-                                  br_list != []}
-            durations_lists[well] = {elec: np.array(dur_list) for elec, dur_list in durations_lists[well].items() if
-                                     dur_list != []}
+        # for well_i in wells:
+        #     timestamps_lists = {well: np.array(br_list) for well, br_list in timestamps_lists.items() if
+        #                               br_list != []}
+        #     bursts_lists = {well: np.array(br_list) for well, br_list in bursts_lists.items() if
+        #                           br_list != []}
+        #     durations_lists = {well: np.array(dur_list) for well, dur_list in durations_lists.items() if
+        #                              dur_list != []}
+        #     number_of_elec_lists = {well: np.array(num_of_elec_list) for well,num_of_elec_list in number_of_elec_lists.items() if
+        #                              num_of_elec_list != []}
+        #     spikes_per_elec_avg_lists = {well: np.array(spikes_per_elec_avg_list) for well,spikes_per_elec_avg_list in spikes_per_elec_avg_lists.items() if
+        #                             spikes_per_elec_avg_list != []}
+        #     spikes_per_elec_std_lists = {well: np.array(spikes_per_elec_std_list) for well,spikes_per_elec_std_list in spikes_per_elec_std_lists.items() if
+        #                                  spikes_per_elec_std_list != []}
 
         print("...done")
 
@@ -200,8 +214,8 @@ def parse_axion_bursts_list(path):
         print("File not accessible")
 
     # pack returns
-    brst_data = timestamps_lists, bursts_lists, durations_lists, wells, elecs_per_well, \
-                rec_time, wells_color, plate_type, \
+    brst_data = timestamps_lists, bursts_lists, durations_lists, number_of_elec_lists, spikes_per_elec_avg_lists, spikes_per_elec_std_lists, \
+                wells, rec_time, wells_color, plate_type, \
                 treatment, concentration
 
     return brst_data
@@ -232,23 +246,21 @@ def parse_mcs_spikes_list(path):
 
 
 # gets parsed spikeslist dict,returns a dict structure of TxWELLxELECTRODExSPT and plots the histograms
-def bursts_per_T(elec_timestamps_dict, elec_bursts_dict, wells, electrodes, Ts, sample_time):
+def bursts_per_T(well_timestamps_dict, well_bursts_dict, wells, Ts, sample_time):
     #
     # Ts - time durations (s)
     # sample_time - total sample time (s)
     print("...calculating bursts per T")
-    data = {}
+    # data = {}
     # configure histograms figure
     # ax_size = math.ceil(math.sqrt((len(electrodes)-1))) # num of rows/cols in the MEA grid
 
     data = {}
     bins = np.arange(0, sample_time + 1, Ts)
     for well in wells:
-        well_data = {}
-        for elec in elec_bursts_dict[well].keys():
-            timestamp = elec_timestamps_dict[well][elec]  # time stamps of spikes
-            bursts = elec_bursts_dict[well][elec]
-            well_data[elec] = np.nan_to_num(stats.binned_statistic(timestamp, bursts, statistic='mean', bins=bins)[0])
+            timestamp = well_timestamps_dict[well]  # time stamps of spikes
+            bursts = well_bursts_dict[well]
+            well_data = np.nan_to_num(stats.binned_statistic(timestamp, bursts, statistic='mean', bins=bins)[0])
             # well_data = {elec: np.histogram(spikes, bins)[0] for elec, spikes in elec_amps_dict[well].items()}
 
             # if T in plotting_Ts:
@@ -267,14 +279,14 @@ def bursts_per_T(elec_timestamps_dict, elec_bursts_dict, wells, electrodes, Ts, 
             for j in range(len(bins) - 1):
                 tot_bur = 0.0
                 icount = 0
-                for elec in well_data.keys():
-                    if well_data[elec][j] > 0:
-                        tot_bur += well_data[elec][j]
-                        icount += 1
+
+                if well_data[j] > 0:
+                    tot_bur = well_data[j]
+                    icount = 1
                 if icount > 0:
                     tot_all_bur[j] = (tot_bur)  # to do
 
-            well_data[""] = tot_all_bur
+            well_data = tot_all_bur
 
             data[well] = well_data
     print("...done")
@@ -283,7 +295,7 @@ def bursts_per_T(elec_timestamps_dict, elec_bursts_dict, wells, electrodes, Ts, 
 
 
 # gets parsed spikeslist dict,returns a dict structure of TxWELLxELECTRODExSPT and plots the histograms
-def durations_per_T(elec_durations_dict, elec_timestamps_dict, wells, electrodes, Ts, sample_time):
+def durations_per_T(well_durations_dict, well_timestamps_dict, wells, Ts, sample_time):
     #
     # Ts - time durations (s)
     # sample_time - total sample time (s)
@@ -295,12 +307,9 @@ def durations_per_T(elec_durations_dict, elec_timestamps_dict, wells, electrodes
     data = {}
     bins = np.arange(0, sample_time + 1, Ts)
     for well in wells:
-        well_data = {}
-        for elec in elec_durations_dict[well].keys():
-            timestamp = elec_timestamps_dict[well][elec]  # time stamps of  bursts
-            durations = elec_durations_dict[well][elec]
-            well_data[elec] = np.nan_to_num(
-                stats.binned_statistic(timestamp, durations, statistic='mean', bins=bins)[0])
+        timestamp = well_timestamps_dict[well]  # time stamps of  bursts
+        durations = well_durations_dict[well]
+        well_data = np.nan_to_num(stats.binned_statistic(timestamp, durations, statistic='mean', bins=bins)[0])
             # well_data = {elec: np.histogram(spikes, bins)[0] for elec, spikes in elec_amps_dict[well].items()}
 
             # if T in plotting_Ts:
@@ -315,25 +324,164 @@ def durations_per_T(elec_durations_dict, elec_timestamps_dict, wells, electrodes
             #     plt.close(fig)
 
             # Add mean well's durations as well
-            tot_all_dur = np.zeros(len(bins) - 1)
-            for j in range(len(bins) - 1):
-                tot_dur = 0.0
-                icount = 0
-                for elec in well_data.keys():
-                    if well_data[elec][j] > 0:
-                        tot_dur += well_data[elec][j]
-                        icount += 1
-                if icount > 0:
-                    tot_all_dur[j] = tot_dur
+        tot_all_dur = np.zeros(len(bins) - 1)
+        for j in range(len(bins) - 1):
+            tot_dur = 0.0
+            icount = 0
+            if well_data[j] > 0:
+                tot_dur += well_data[j]
+                icount += 1
+            if icount > 0:
+                tot_all_dur[j] = tot_dur
 
-            well_data[""] = tot_all_dur
+        well_data = tot_all_dur
 
-            data[well] = well_data
+        data[well] = well_data
 
     print('...done')
 
     return data
 
+def num_of_elec_per_T(well_num_of_elec_per_T_dict, well_timestamps_dict, wells, Ts, sample_time):
+    #
+    # Ts - time durations (s)
+    # sample_time - total sample time (s)
+    print("...calculating durations per Ts")
+    data = {}
+    # configure histograms figure
+    # ax_size = math.ceil(math.sqrt((len(electrodes)-1))) # num of rows/cols in the MEA grid
+
+    data = {}
+    bins = np.arange(0, sample_time + 1, Ts)
+    for well in wells:
+        timestamp = well_timestamps_dict[well]  # time stamps of  bursts
+        durations = well_num_of_elec_per_T_dict[well]
+        well_data = np.nan_to_num(stats.binned_statistic(timestamp, durations, statistic='mean', bins=bins)[0])
+            # well_data = {elec: np.histogram(spikes, bins)[0] for elec, spikes in elec_amps_dict[well].items()}
+
+            # if T in plotting_Ts:
+            #     # plot histograms
+            #     fig, axs = plt.subplots(ax_size,ax_size, figsize=(25,15))
+            #     fig.suptitle("Well %s, T = %.3f" %(well, T))
+            #     for elec, spt in well_data.items():
+            #         x, y = int(elec[0])-1, int(elec[1])-1
+            #         axs[x, y].set_title(elec)
+            #         axs[x, y].plot(bins[:-1], spt)
+            #     #plt.savefig(os.path.join(output_dir,"hist_%s_%.3f.png" %(well,T)))
+            #     plt.close(fig)
+
+            # Add mean well's durations as well
+        tot_all_dur = np.zeros(len(bins) - 1)
+        for j in range(len(bins) - 1):
+            tot_dur = 0.0
+            icount = 0
+            if well_data[j] > 0:
+                tot_dur += well_data[j]
+                icount += 1
+            if icount > 0:
+                tot_all_dur[j] = tot_dur
+
+        well_data = tot_all_dur
+
+        data[well] = well_data
+
+    print('...done')
+
+    return data
+
+def spikes_per_elec_avg_per_T(well_nspikes_per_elec_avg_dict, well_timestamps_dict, wells, Ts, sample_time):
+    #
+    # Ts - time durations (s)
+    # sample_time - total sample time (s)
+    print("...calculating durations per Ts")
+    data = {}
+    # configure histograms figure
+    # ax_size = math.ceil(math.sqrt((len(electrodes)-1))) # num of rows/cols in the MEA grid
+
+    data = {}
+    bins = np.arange(0, sample_time + 1, Ts)
+    for well in wells:
+        timestamp = well_timestamps_dict[well]  # time stamps of  bursts
+        durations = well_nspikes_per_elec_avg_dict[well]
+        well_data = np.nan_to_num(stats.binned_statistic(timestamp, durations, statistic='mean', bins=bins)[0])
+            # well_data = {elec: np.histogram(spikes, bins)[0] for elec, spikes in elec_amps_dict[well].items()}
+
+            # if T in plotting_Ts:
+            #     # plot histograms
+            #     fig, axs = plt.subplots(ax_size,ax_size, figsize=(25,15))
+            #     fig.suptitle("Well %s, T = %.3f" %(well, T))
+            #     for elec, spt in well_data.items():
+            #         x, y = int(elec[0])-1, int(elec[1])-1
+            #         axs[x, y].set_title(elec)
+            #         axs[x, y].plot(bins[:-1], spt)
+            #     #plt.savefig(os.path.join(output_dir,"hist_%s_%.3f.png" %(well,T)))
+            #     plt.close(fig)
+
+            # Add mean well's durations as well
+        tot_all_dur = np.zeros(len(bins) - 1)
+        for j in range(len(bins) - 1):
+            tot_dur = 0.0
+            icount = 0
+            if well_data[j] > 0:
+                tot_dur += well_data[j]
+                icount += 1
+            if icount > 0:
+                tot_all_dur[j] = tot_dur
+
+        well_data = tot_all_dur
+
+        data[well] = well_data
+
+    print('...done')
+
+    return data
+
+def spikes_per_elec_std_per_T(well_nspikes_per_elec_std_dict, well_timestamps_dict, wells, Ts, sample_time):
+    #
+    # Ts - time durations (s)
+    # sample_time - total sample time (s)
+    print("...calculating durations per Ts")
+    data = {}
+    # configure histograms figure
+    # ax_size = math.ceil(math.sqrt((len(electrodes)-1))) # num of rows/cols in the MEA grid
+
+    data = {}
+    bins = np.arange(0, sample_time + 1, Ts)
+    for well in wells:
+        timestamp = well_timestamps_dict[well]  # time stamps of  bursts
+        durations = well_nspikes_per_elec_std_dict[well]
+        well_data = np.nan_to_num(stats.binned_statistic(timestamp, durations, statistic='mean', bins=bins)[0])
+            # well_data = {elec: np.histogram(spikes, bins)[0] for elec, spikes in elec_amps_dict[well].items()}
+
+            # if T in plotting_Ts:
+            #     # plot histograms
+            #     fig, axs = plt.subplots(ax_size,ax_size, figsize=(25,15))
+            #     fig.suptitle("Well %s, T = %.3f" %(well, T))
+            #     for elec, spt in well_data.items():
+            #         x, y = int(elec[0])-1, int(elec[1])-1
+            #         axs[x, y].set_title(elec)
+            #         axs[x, y].plot(bins[:-1], spt)
+            #     #plt.savefig(os.path.join(output_dir,"hist_%s_%.3f.png" %(well,T)))
+            #     plt.close(fig)
+
+            # Add mean well's durations as well
+        tot_all_dur = np.zeros(len(bins) - 1)
+        for j in range(len(bins) - 1):
+            tot_dur = 0.0
+            icount = 0
+            if well_data[j] > 0:
+                tot_dur += well_data[j]
+                icount += 1
+            if icount > 0:
+                tot_all_dur[j] = tot_dur
+
+        well_data = tot_all_dur
+
+        data[well] = well_data
+
+    print('...done')
+
+    return data
 
 def plot_heatmaps(data, well, T, labels, path):
     # data = 2D np array of single well's electrodes bursts per T
@@ -534,19 +682,18 @@ def write_sheet(data, data2, Ts, wb, ws, wells_color, plate_type, treatment, con
     print("...done")
 
 
-def write_sheet_transpose(data, data2, Ts, wb, ws, wells_color, plate_type, treatment, concentration):
+def write_sheet_transpose(data, data2, data3, data4, data5, Ts, wb, ws, wells_color, plate_type, treatment, concentration):
     print("...writing sheet: %s" % ws.get_name())
 
     bold = wb.add_format({'bold': True})
-    ws.write(0, 0, 'Size(burst-rate per sec (Hz)):', bold)
+    ws.write(0, 0, 'Size(burst-rate):', bold)
     row = 1
     # span time axis
     exist_well = [*data.keys()][0]
-    exist_elec = [*data[exist_well].keys()][0]
-    nbins = len(data[exist_well][exist_elec])
+    nbins = len(data[exist_well])
     xtime = np.linspace(Ts, nbins * Ts, nbins)
     lines = []# lines to print
-    lines.append( ['Time / Well'])
+    lines.append( ['Time(Hz)'])
     lines.append( ['Treatment (Concentration)'])
     timeLine = xtime.tolist()
     for i in range (len(timeLine)):
@@ -558,25 +705,20 @@ def write_sheet_transpose(data, data2, Ts, wb, ws, wells_color, plate_type, trea
     # write ordered: wells first then wells+electrodes.
     for color in wells_color:
         for well in wells_color[color]:
-
             if concentration[well] == ['']:
                 tc = "".join(treatment[well])
             else:
                 tc = "".join(treatment[well] + [' ('] + concentration[well] + [')'])
 
             if well in data:
-                electrodes = data[well]
-
                 # print only wells first
-                for elec in sorted(electrodes.keys()):
-                    if (elec == ''):
-                        lines[0].append([well] + [color])
-                        lines[1].append(tc)
-                        ln = electrodes[elec].tolist()
-                        ls = [(x/xtime[0]) if x > 0 else 0 for x in ln]
-                        # write
-                        for i in range (2, len(lines)):
-                            lines[i].append(ls[i-2])
+                lines[0].append([well] + [color])
+                lines[1].append(tc)
+                ln = data[well].tolist()
+                ls = [(x/xtime[0]) if x > 0 else 0 for x in ln]
+                # write
+                for i in range (2, len(lines)):
+                    lines[i].append(ls[i-2])
 
             else:
                 lines[0].append([well] + [color])
@@ -596,7 +738,7 @@ def write_sheet_transpose(data, data2, Ts, wb, ws, wells_color, plate_type, trea
     row += 1
 
     lines = []  # lines to print
-    lines.append( ['Time / Well'])
+    lines.append( ['Time(Hz)'])
     lines.append( ['Treatment (Concentration)'])
     for i in range (len(timeLine)):
         lines.append( [timeLine[i]])
@@ -613,18 +755,104 @@ def write_sheet_transpose(data, data2, Ts, wb, ws, wells_color, plate_type, trea
                 tc = "".join(treatment[well] + [' ('] + concentration[well] + [')'])
 
             if well in data2:
-                electrodes = data[well]
+            # print only wells first
+                lines[0].append([well] + [color])
+                lines[1].append(tc)
+                ln = data2[well].tolist()
+                ls = [(x/xtime[0]) if x > 0 else 0 for x in ln]
+                # write
+                for i in range(2, len(lines)):
+                    lines[i].append(ls[i - 2])
 
+            else:
+                lines[0].append([well] + [color])
+                lines[1].append(tc)
+                ls = [''] * nbins#changed - follow to see if it works
+                for i in range(2, len(lines)):
+                    lines[i].append(ls[i - 2])
+
+    write_line_transpose(ws, wb, row, lines)
+
+
+    row += numberOfRows
+
+    row += 1  # empty line
+
+    ws.write(row, 0, 'Number of Electrodes per well (average):', bold)
+
+    row += 1
+    lines = []
+    lines.append( ['Time(Hz)'])
+    lines.append( ['Treatment (Concentration)'])
+    for i in range (len(timeLine)):
+        lines.append( [timeLine[i]])
+
+    numberOfRows = len(timeLine) + 2
+
+
+    # write ordered: wells
+    for color in wells_color:
+        for well in wells_color[color]:
+
+            if concentration[well] == ['']:
+                tc = "".join(treatment[well])
+            else:
+                tc = "".join(treatment[well] + [' ('] + concentration[well] + [')'])
+
+            if well in data3:
                 # print only wells first
-                for elec in sorted(electrodes.keys()):
-                    if (elec == ''):
-                        lines[0].append([well] + [color])
-                        lines[1].append(tc)
-                        ln = electrodes[elec].tolist()
-                        ls = [(x/xtime[0]) if x > 0 else 0 for x in ln]
-                        # write
-                        for i in range(2, len(lines)):
-                            lines[i].append(ls[i - 2])
+                lines[0].append([well] + [color])
+                lines[1].append(tc)
+                ln = data3[well].tolist()
+                ls = [(x / xtime[0]) if x > 0 else 0 for x in ln]
+                # write
+                for i in range(2, len(lines)):
+                    lines[i].append(ls[i - 2])
+
+            else:
+                lines[0].append([well] + [color])
+                lines[1].append(tc)
+                ls = [''] * nbins#changed - follow to see if it works
+                for i in range(2, len(lines)):
+                    lines[i].append(ls[i - 2])
+
+    write_line_transpose(ws, wb, row, lines)
+
+
+    row += numberOfRows
+
+    row += 1  # empty line
+
+    ws.write(row, 0, 'Size(burst-rate) per electrode (average):', bold)
+
+    row += 1
+    lines = []
+    lines.append( ['Time(Hz)'])
+    lines.append( ['Treatment (Concentration)'])
+    for i in range (len(timeLine)):
+        lines.append( [timeLine[i]])
+
+    numberOfRows = len(timeLine) + 2
+
+
+    # write ordered: wells
+    for color in wells_color:
+        for well in wells_color[color]:
+
+            if concentration[well] == ['']:
+                tc = "".join(treatment[well])
+            else:
+                tc = "".join(treatment[well] + [' ('] + concentration[well] + [')'])
+
+            if well in data4:
+                # print only wells first
+                lines[0].append([well] + [color])
+                lines[1].append(tc)
+                ln = data4[well].tolist()
+                ls = [(x / xtime[0]) if x > 0 else 0 for x in ln]
+                # write
+                for i in range(2, len(lines)):
+                    lines[i].append(ls[i - 2])
 
             else:
                 lines[0].append([well] + [color])
@@ -639,11 +867,11 @@ def write_sheet_transpose(data, data2, Ts, wb, ws, wells_color, plate_type, trea
 
     row += 1  # empty line
 
-    ws.write(row, 0, 'Size(burst-rate per Sec (Hz)) per electrode:', bold)
+    ws.write(row, 0, 'Size(spikes) per electrode (std):', bold)
 
     row += 1
     lines = []
-    lines.append( ['Time / Electrode'])
+    lines.append( ['Time(Hz)'])
     lines.append( ['Treatment (Concentration)'])
     for i in range (len(timeLine)):
         lines.append( [timeLine[i]])
@@ -651,50 +879,31 @@ def write_sheet_transpose(data, data2, Ts, wb, ws, wells_color, plate_type, trea
     numberOfRows = len(timeLine) + 2
 
 
-    # write ordered: wells+electrodes
+    # write ordered: wells
     for color in wells_color:
         for well in wells_color[color]:
+
             if concentration[well] == ['']:
                 tc = "".join(treatment[well])
             else:
                 tc = "".join(treatment[well] + [' ('] + concentration[well] + [')'])
-            if well in data:
-                electrodes = data[well]
 
-                # print all
-                elecs_full_list = get_elecs_full_list(well, plate_type)
-                for elec in elecs_full_list:
-                    ttl = well if (elec == '') else (well + '_' + elec)
-                    lines[0].append([ttl] + [color])
-                    lines[1].append(tc)
-                    if elec in electrodes.keys():
-                        line = electrodes[elec].tolist()
-                        ls = [(x/xtime[0]) if x > 0 else 0 for x in line]
-                        for i in range(2, len(lines)):
-                            lines[i].append(ls[i - 2])
-                    else:
-                        ls = [0] * nbins
-                        for i in range(2, len(lines)):
-                            lines[i].append(ls[i - 2])
-                    # w.writerow([ttl] + ls)
+            if well in data5:
+                # print only wells first
+                lines[0].append([well] + [color])
+                lines[1].append(tc)
+                ln = data5[well].tolist()
+                ls = [(x / xtime[0]) if x > 0 else 0 for x in ln]
+                # write
+                for i in range(2, len(lines)):
+                    lines[i].append(ls[i - 2])
+
             else:
-                ttl = well if (elec == '') else (well + '_' + elec)
-                lines[0].append([ttl] + [color])
+                lines[0].append([well] + [color])
                 lines[1].append(tc)
                 ls = [''] * nbins#changed - follow to see if it works
                 for i in range(2, len(lines)):
                     lines[i].append(ls[i - 2])
-
-
-                elecs_full_list = get_elecs_full_list(well, plate_type)
-                for elec in elecs_full_list:
-                    ttl = well if (elec == '') else (well + '_' + elec)
-                    lines[0].append([ttl] + [color])
-                    lines[1].append(tc)
-                    ls = [''] * (nbins)#changed - follow to see if it works
-                    for i in range(2, len(lines)):
-                        lines[i].append(ls[i - 2])
-                    print("...done")
 
     write_line_transpose(ws, wb, row, lines)
 
@@ -751,8 +960,8 @@ def analyze_file(input_file, Ts, Tw, Tc):
     parsing_func = parse_axion_bursts_list
     brst_data = parsing_func(input_file)
 
-    timestamps_dict, bursts_dict, durations_dict, wells, electrodes, sample_time, \
-    wells_color, plate_type, treatment, concentration = brst_data
+    timestamps_dict, bursts_dict, durations_dict, number_of_elec_dict, spikes_per_elec_avg_dict, spikes_per_elec_std_dict, \
+    wells, sample_time, wells_color, plate_type, treatment, concentration = brst_data
 
     # check time gate
     print('...sample time is: %d s' % sample_time)
@@ -762,14 +971,17 @@ def analyze_file(input_file, Ts, Tw, Tc):
         print('...skipping analysis of this file')
         return
 
-    data1 = bursts_per_T(timestamps_dict, bursts_dict, wells, electrodes, Ts, sample_time)
-    data2 = durations_per_T(durations_dict, timestamps_dict, wells, electrodes, Ts, sample_time)
+    data1 = bursts_per_T(timestamps_dict, bursts_dict, wells, Ts, sample_time)
+    data2 = durations_per_T(durations_dict, timestamps_dict, wells, Ts, sample_time)
+    data3 = num_of_elec_per_T(number_of_elec_dict, timestamps_dict, wells, Ts, sample_time)
+    data4 = spikes_per_elec_avg_per_T(spikes_per_elec_avg_dict, timestamps_dict, wells, Ts, sample_time)
+    data5 = spikes_per_elec_std_per_T(spikes_per_elec_std_dict, timestamps_dict, wells, Ts, sample_time)
 
     # plot_time_windows(wells, Ts, plotting_Ts, data1, output_dir)
 
     print("...done analyzing\n\n")
 
-    return data1, data2, wells_color, plate_type, treatment, concentration
+    return data1, data2, data3, data4, data5, wells_color, plate_type, treatment, concentration
 
 
 def main(input_dir, input_files, Ts, output_dir):
@@ -858,38 +1070,37 @@ def main(input_dir, input_files, Ts, output_dir):
 
     # create workbooks - open xlsx files for writing
     print("...open output files for writing (%s)" % ofile)
-    ofnameBRST = ofile.replace(ext, '_BRST' + ext)
+    ofnameBRST = ofile.replace(ext, '_BRST_NT' + ext)
     # ofnameBRST = ofile
     wbBRST = xlsxwriter.Workbook(ofnameBRST, {'constant_memory': True})
     print("...done")
 
     # loop over input files
     for input_file in sorted(input_files):
+        try:
+            data1, data2, data3, data4, data5, wells_color, plate_type, treat, conc \
+                = analyze_file(input_file, Ts, Tw, Tc)
 
-        # try:
-        data1, data2, wells_color, plate_type, treat, conc \
-            = analyze_file(input_file, Ts, Tw, Tc)
+            # save raw bursts and durations count per timebin
+            ifile = os.path.basename(input_file)
+            root, ext = os.path.splitext(ifile)
+            # len(root) <= 31
+            root = root.replace("_spike_list", "")
+            root = root.replace("electrode_burst_list", "")
+            root = root.replace("network_burst_list", "")
+            if len(root) > MAX_SHEET_NAME_LENGTH:
+                root = root[:MAX_SHEET_NAME_LENGTH]  # leave last 31 chars
+            # add s worksheets
+            wsBRST = wbBRST.add_worksheet(root)
 
-        # save raw bursts and durations count per timebin
-        ifile = os.path.basename(input_file)
-        root, ext = os.path.splitext(ifile)
-        # len(root) <= 31
-        root = root.replace("_spike_list", "")
-        root = root.replace("electrode_burst_list", "")
-        root = root.replace("network_burst_list", "")
-        if len(root) > MAX_SHEET_NAME_LENGTH:
-            root = root[:MAX_SHEET_NAME_LENGTH]  # leave last 31 chars
-        # add s worksheets
-        wsBRST = wbBRST.add_worksheet(root)
-
-        write_sheet_transpose(data1, data2, Ts, wbBRST, wsBRST, wells_color, plate_type, treat, conc)
-        # save_raw(data1, data2, Ts, ofnameBRST, workbook, wells_color, plate_type)
-        # ofDur = ofile.replace(ext, '_AMP' + ext)
-        # save_raw(data2, Ts, ofDur, workbook, wells_color, plate_type)
-        # except:
-        #     print("This file is empty and shouldn't being analyze")
-        #     print("filename: " + input_file)
-        #     continue
+            write_sheet_transpose(data1, data2, data3, data4, data5, Ts, wbBRST, wsBRST, wells_color, plate_type, treat, conc)
+            # save_raw(data1, data2, Ts, ofnameBRST, workbook, wells_color, plate_type)
+            # ofDur = ofile.replace(ext, '_AMP' + ext)
+            # save_raw(data2, Ts, ofDur, workbook, wells_color, plate_type)
+        except:
+            print("This file is empty and shouldn't being analyze")
+            print("filename: " + input_file)
+            continue
 
     print("...closing output files")
     wbBRST.close()

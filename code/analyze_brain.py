@@ -81,7 +81,7 @@ def parse_axion_spikes_list(path):
         while re.match(FOOTER_RE, lines[iline]) == None:
             iline -= 1
             if abs(iline) == len(lines):
-                sys.exit('\n>>>>> ERROR: COULD NOT FIND FOOTER (STRING: Well Information)\n')            
+                sys.exit('\n>>>>> ERROR: COULD NOT FIND FOOTER (STRING: Well Information)\n')
         data_wells = lines[iline+1].rstrip().split(",")[1:]
         data_colors = lines[iline+3].rstrip().replace("#","").split(",")[1:]
 
@@ -114,26 +114,31 @@ def parse_axion_spikes_list(path):
             concentration[i].append(j)
 
         # find last data line
-        iline =-1
+        iline = -1
         while re.match(LAST_DATA_LINE_RE, lines[iline]) == None and abs(iline) < len(lines):
             iline -= 1
-        data = np.loadtxt(lines[1:iline+1], dtype="str", delimiter=",")
-        
+        checker = iline
+        data = np.loadtxt(lines[1:iline + 1], dtype="str", delimiter=",")
+
         # parse the recording's length
         iline = 0
-        while re.match(REC_TIME_LINE_RE, lines[iline]) == None:
-            iline += 1
-            if iline == len(lines):
-                sys.exit('\n>>>>> ERROR: COULD NOT FIND RECORDING TIME (REQUESTED/ACTUAL DURATION OF MEASUREMENT)\n')                   
-        time_match = re.match(REC_TIME_RE, lines[iline]).groupdict()
-        
-        rec_time = 0
-        if time_match['hr']:
-            rec_time += int(time_match['hr'])*3600
-        if time_match['min']:
-            rec_time += int(time_match['min'])*60
-        if time_match['sec']:
-            rec_time += int(time_match['sec']) 
+        didntShown = False
+        print("The record time doesn't shown in the excel file")
+        lastTimeSec = int(float(lines[checker].split(',')[2])) + 1
+        firstTimeSec = int(float(lines[1].split(',')[2]))
+        rec_time = lastTimeSec - firstTimeSec
+        didntShown = True
+        # sys.exit('\n>>>>> ERROR: COULD NOT FIND RECORDING TIME (REQUESTED/ACTUAL DURATION OF MEASUREMENT)\n')
+        time_match = {}
+        if (didntShown == False):
+            time_match = re.match(REC_TIME_RE, lines[iline]).groupdict()
+            rec_time = 0
+            if time_match['hr']:
+                rec_time += int(time_match['hr']) * 3600
+            if time_match['min']:
+                rec_time += int(time_match['min']) * 60
+            if time_match['sec']:
+                rec_time += int(time_match['sec'])
 
         # parse the plate type - CytoView MEA 6/24
         iline = 0
@@ -163,9 +168,11 @@ def parse_axion_spikes_list(path):
         #import pdb; pdb.set_trace()
         spikes_lists = {well: copy.deepcopy(elecs) for well in wells}
         amps_lists = {well: copy.deepcopy(elecs) for well in wells}
+        SAMPLE_DELAY = float(data[1][TIMESTAMP_IND])
+        SAMPLE_DELAY = float('%.1f' % (SAMPLE_DELAY))
         for row in data:
             well, elec = row[ELECTRODE_IND].split('_')
-            ts = float(row[TIMESTAMP_IND])
+            ts = float(row[TIMESTAMP_IND]) - SAMPLE_DELAY # SAMPLE_DELAY made to reset the time
             amp = float(row[AMPLITUDE_IND])
             spikes_lists[well][elec].append(ts)
             amps_lists[well][elec].append(amp)
@@ -283,7 +290,7 @@ def write_sheet(data, T, wb, ws, wells_color, plate_type,\
     exist_elec = [*data[exist_well].keys()][0]
     nbins = len(data[exist_well][exist_elec])
     xtime = np.linspace(T, nbins*T, nbins)          
-    line = ['Time'] + ['Treatment (Concentration)'] + xtime.tolist()
+    line = ['Time (Show data in HZ)'] + ['Treatment (Concentration)'] + xtime.tolist()
     # write
     bold = wb.add_format({'bold': True})
     for col in range(len(line)):            
@@ -304,7 +311,7 @@ def write_sheet(data, T, wb, ws, wells_color, plate_type,\
                 for elec in sorted(electrodes.keys()):  
                     if (elec == ''):
                         ln = electrodes[elec].tolist()
-                        ls = [x if x > 0 else "" for x in ln]
+                        ls = [(x/xtime[0]) if x > 0 else 0 for x in ln]
                         line = [well] + [tc] + ls                            
                         # write
                         write_line(ws, wb, row, line, color)
@@ -315,9 +322,18 @@ def write_sheet(data, T, wb, ws, wells_color, plate_type,\
                 write_line(ws, wb, row, line, color)
                 row += 1
     
-    row += 1
+    row += 2
     #w.writerow('') # empty line
-
+    exist_well = [*data.keys()][0]
+    exist_elec = [*data[exist_well].keys()][0]
+    nbins = len(data[exist_well][exist_elec])
+    xtime = np.linspace(T, nbins * T, nbins)
+    line = ['Time (Show data in HZ)'] + ['Treatment (Concentration)'] + xtime.tolist()
+    # write
+    bold = wb.add_format({'bold': True})
+    for col in range(len(line)):
+        ws.write(row, col, line[col], bold)
+    row += 1
     # write wells+electrodes.
     for color in wells_color:                                
         for well in wells_color[color]:
@@ -330,7 +346,7 @@ def write_sheet(data, T, wb, ws, wells_color, plate_type,\
                     ttl = well if (elec == '') else (well + '_' + elec)
                     if elec in electrodes.keys():                                                           
                         line = electrodes[elec].tolist()
-                        ls = [x if x > 0 else "" for x in line]                                
+                        ls = [(x/xtime[0]) if x > 0 else 0 for x in line]
                     else:
                         ls = ['']*nbins
                     line = [ttl] + [''] + ls
@@ -352,6 +368,146 @@ def write_sheet(data, T, wb, ws, wells_color, plate_type,\
                     row += 1                        
                             
     print("...done")
+
+
+def write_sheet_transpose(data, Ts, wb, ws, wells_color, plate_type,\
+                treatment, concentration):
+    print("...writing sheet: %s" % ws.get_name())
+
+    bold = wb.add_format({'bold': True})
+    ws.write(0, 0, 'Number of Spikes per sec (Hz):', bold)
+    row = 1
+    # span time axis
+    exist_well = [*data.keys()][0]
+    exist_elec = [*data[exist_well].keys()][0]
+    nbins = len(data[exist_well][exist_elec])
+    xtime = np.linspace(Ts, nbins * Ts, nbins)
+    lines = []# lines to print
+    lines.append( ['Time / Well'])
+    lines.append( ['Treatment (Concentration)'])
+    timeLine = xtime.tolist()
+    for i in range (len(timeLine)):
+        lines.append( [timeLine[i]])
+
+    numberOfRows = len (timeLine) + 2
+
+
+    # write ordered: wells first then wells+electrodes.
+    for color in wells_color:
+        for well in wells_color[color]:
+
+            if concentration[well] == ['']:
+                tc = "".join(treatment[well])
+            else:
+                tc = "".join(treatment[well] + [' ('] + concentration[well] + [')'])
+
+            if well in data:
+                electrodes = data[well]
+
+                # print only wells first
+                for elec in sorted(electrodes.keys()):
+                    if (elec == ''):
+                        lines[0].append([well] + [color])
+                        lines[1].append(tc)
+                        ln = electrodes[elec].tolist()
+                        ls = [(x/xtime[0]) if x > 0 else 0 for x in ln]
+                        # write
+                        for i in range (2, len(lines)):
+                            lines[i].append(ls[i-2])
+
+            else:
+                lines[0].append([well] + [color])
+                lines[1].append(tc)
+                ls = [0] * nbins
+                for i in range(2, len(lines)):
+                    lines[i].append(ls[i - 2])
+
+    write_line_transpose(ws,wb,row,lines)
+
+    row += numberOfRows
+
+    row += 1  # empty line
+
+    ws.write(row, 0, 'Number of spikes per electrode (per sec, Hz):', bold)
+
+    row += 1
+    lines = []
+    lines.append( ['Time / Electrode'])
+    lines.append( ['Treatment (Concentration)'])
+    for i in range (len(timeLine)):
+        lines.append( [timeLine[i]])
+
+    numberOfRows = len(timeLine) + 2
+
+
+    # write ordered: wells+electrodes
+    for color in wells_color:
+        for well in wells_color[color]:
+            if concentration[well] == ['']:
+                tc = "".join(treatment[well])
+            else:
+                tc = "".join(treatment[well] + [' ('] + concentration[well] + [')'])
+            if well in data:
+                electrodes = data[well]
+
+                # print all
+                elecs_full_list = get_elecs_full_list(well, plate_type)
+                for elec in elecs_full_list:
+                    ttl = well if (elec == '') else (well + '_' + elec)
+                    lines[0].append([ttl] + [color])
+                    lines[1].append(tc)
+                    if elec in electrodes.keys():
+                        line = electrodes[elec].tolist()
+                        ls = [(x/xtime[0]) if x > 0 else 0 for x in line]
+                        for i in range(2, len(lines)):
+                            lines[i].append(ls[i - 2])
+                    else:
+                        ls = [0] * nbins
+                        for i in range(2, len(lines)):
+                            lines[i].append(ls[i - 2])
+                    # w.writerow([ttl] + ls)
+            else:
+                ttl = well if (elec == '') else (well + '_' + elec)
+                lines[0].append([ttl] + [color])
+                lines[1].append(tc)
+                ls = [0] * nbins
+                for i in range(2, len(lines)):
+                    lines[i].append(ls[i - 2])
+
+
+                elecs_full_list = get_elecs_full_list(well, plate_type)
+                for elec in elecs_full_list:
+                    ttl = well if (elec == '') else (well + '_' + elec)
+                    lines[0].append([ttl] + [color])
+                    lines[1].append(tc)
+                    ls = [0] * (nbins)
+                    for i in range(2, len(lines)):
+                        lines[i].append(ls[i - 2])
+                    print("...done")
+
+    write_line_transpose(ws, wb, row, lines)
+
+    print("...done")
+
+
+def write_line_transpose(ws, wb, firstRow, lines):
+    for line in range(firstRow, len(lines) + firstRow):
+        if line == firstRow:
+            cell_format = wb.add_format({'bold': True})
+            ws.write(line, 0, lines[0][0], cell_format)#Time cell
+            for col in range (1, len (lines[0])):
+                cell_format = wb.add_format({'bold': True, 'bg_color': lines[0][col][1]})
+                ws.write(line, col, lines[0][col][0], cell_format)
+        else:
+            cell_format = wb.add_format({'bold': True})
+            ws.write(line, 0, lines[line-firstRow][0], cell_format)  # Treatment cell
+            for col in range(1, len(lines[1])):
+                cell_format = wb.add_format({'bold': True, 'bg_color': lines[0][col][1]})
+                ws.write(line, col, lines[line-firstRow][col], cell_format)  # Treatment line
+
+
+
+
 
 
 def calc_cov_corr(data, wells, Tw, Tc):        
@@ -429,7 +585,7 @@ def analyze_file(input_file, Ts, Tw, Tc):
     return data_spk, data_amps, wells_color, plate_type, treatment, concentration
 
 
-def main():
+def main(input_dir, input_files, Ts, output_dir):
 
     # arg parse    
     description = 'Process Axion data files.'
@@ -444,6 +600,7 @@ def main():
     \t  read-all-dir: process all csv files in input-dir automatically. No GUI.\n\
     \t  e.g., from MEA/code, run:\n\
     \t  python3 analyze_brain.py -i "..\data\spike_list_1.csv" -o "..\output" -f "spk5" -Ts 120 -Tw 0.1 -Tc 10\n'
+    '''
     parser = argparse.ArgumentParser(description=description,
                                      epilog=epilog, usage=usage)
     #parser.add_argument("-t", "--type", help="type of input file. 1 - axion, 2 - multichannel systems", default='axion')
@@ -463,7 +620,23 @@ def main():
     Ts = args.Ts[0]
     Tw = args.Tw[0]
     Tc = args.Tc[0]
-    
+    '''
+    # input_dir = "C:\\Users\\קוגניציה מולקולרית\\Desktop"
+    # root = tk.Tk()
+    # root.filenames = filedialog.askopenfilenames(initialdir=input_dir, title="Select file",filetypes=(("csv files", "*.csv"), ("all files", "*.*")))
+    # input_files = root.tk.splitlist(root.filenames)
+    # root.destroy()
+
+
+    #input_dir = input("Please eneter the input the location (directory/file) here")#"..\\data\\burst\\50k div12 cortex 20200804 After venom overnight(010)(000)_electrode_burst_list.csv"
+    # Ts = float(input("Please enter the Ts" + '\n'))
+    Tw = 0.1 #float(input("Please enter the Tw"+ '\n'))
+    Tc = 10 #float(input("Please enter the Tc"+ '\n'))
+    # root = tk.Tk()
+    # root.filenames = filedialog.askdirectory(initialdir=input_dir, title="Select folder")
+    # output_dir = root.filenames
+    # root.destroy()
+    '''
     # check if a specific file is given, not a directory
     if re.match(r'.*\.csv$',input_dir): 
         input_files = [input_dir]
@@ -481,6 +654,8 @@ def main():
     # output dir
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+    '''
+    output_file = input_files[0].split('/') [len(input_dir.split('/')) - 3] + " Output"
 
     # check extension of output file name
     root, ext = os.path.splitext(output_file)
@@ -499,24 +674,29 @@ def main():
     
     # loop over input files
     for input_file in sorted(input_files):
-        data1, data2, wells_color, plate_type, treat, conc\
-            = analyze_file(input_file, Ts, Tw, Tc)
-    
-        # save raw spikes and amps count per timebin                    
-        ifile = os.path.basename(input_file)
-        root, ext = os.path.splitext(ifile)
-        # len(root) <= 31 
-        root = root.replace("_spike_list","")
-        root = root.replace("electrode_burst_list","")
-        root = root.replace("network_burst_list","")
-        if len(root) > MAX_SHEET_NAME_LENGTH:
-            root = root[-MAX_SHEET_NAME_LENGTH:] # leave last 31 chars
-        # add s worksheets
-        wsSPK = wbSPK.add_worksheet(root)
-        wsAMP = wbAMP.add_worksheet(root)
+        try:
+            data1, data2, wells_color, plate_type, treat, conc\
+                = analyze_file(input_file, Ts, Tw, Tc)
 
-        write_sheet(data1, Ts, wbSPK, wsSPK, wells_color, plate_type, treat, conc)
-        write_sheet(data2, Ts, wbAMP, wsAMP, wells_color, plate_type, treat, conc)
+            # save raw spikes and amps count per timebin
+            ifile = os.path.basename(input_file)
+            root, ext = os.path.splitext(ifile)
+            # len(root) <= 31
+            root = root.replace("_spike_list","")
+            root = root.replace("electrode_burst_list","")
+            root = root.replace("network_burst_list","")
+            if len(root) > MAX_SHEET_NAME_LENGTH:
+                root = root[-MAX_SHEET_NAME_LENGTH:] # leave last 31 chars
+            # add s worksheets
+            wsSPK = wbSPK.add_worksheet(root)
+            wsAMP = wbAMP.add_worksheet(root)
+
+            write_sheet_transpose(data1, Ts, wbSPK, wsSPK, wells_color, plate_type, treat, conc)
+            write_sheet_transpose(data2, Ts, wbAMP, wsAMP, wells_color, plate_type, treat, conc)
+        except:
+            print("This file is empty and shouldn't being analyze")
+            print("filename: " + input_file)
+            continue
 
 
     print("...closing output files")
