@@ -228,29 +228,39 @@ def amps_per_T(elec_amps_dict, elec_spikes_dict, wells, electrodes, T, sample_ti
     # configure histograms figure 
     #ax_size = math.ceil(math.sqrt((len(electrodes)-1))) # num of rows/cols in the MEA grid
 
-    bins = np.arange(0, sample_time+1, T)
+    bins = np.arange(0, sample_time + 1, T)
     for well in wells:
-        well_data = {}
-        for elec in elec_amps_dict[well].keys():
-            spikes = elec_spikes_dict[well][elec] # time stamps of spikes
-            amps   = elec_amps_dict[well][elec]
-            well_data[elec] = np.nan_to_num(stats.binned_statistic(spikes, amps, statistic='mean', bins=bins)[0])                
+        well_data = {elec: np.histogram(amps, bins)[0] for elec, amps in elec_amps_dict[well].items()}
 
-        # Add mean well's amp as well            
-        ave_amp = np.zeros(len(bins)-1)
-        for j in range(len(bins)-1):
-            tot_amp = 0.0
-            icount = 0
-            for elec in well_data.keys():
-                if well_data[elec][j] > 0:
-                    tot_amp += well_data[elec][j]
-                    icount += 1
-            if icount > 0: 
-                ave_amp[j] = tot_amp/icount                                     
-                
-        well_data[""] = ave_amp
-        
+        # Add total well's spt as well
+        well_data[""] = sum(well_data.values())
         data[well] = well_data
+
+
+    # ****************Before:********************
+    # bins = np.arange(0, sample_time+1, T)
+    # for well in wells:
+    #     well_data = {}
+    #     for elec in elec_amps_dict[well].keys():
+    #         spikes = elec_spikes_dict[well][elec] # time stamps of spikes
+    #         amps   = elec_amps_dict[well][elec]
+    #         well_data[elec] = np.nan_to_num(stats.binned_statistic(spikes, amps, statistic='mean', bins=bins)[0])
+    #
+    #     # Add mean well's amp as well
+    #     ave_amp = np.zeros(len(bins)-1)
+    #     for j in range(len(bins)-1):
+    #         tot_amp = 0.0
+    #         icount = 0
+    #         for elec in well_data.keys():
+    #             if well_data[elec][j] > 0:
+    #                 tot_amp += well_data[elec][j]
+    #                 icount += 1
+    #         if icount > 0:
+    #             ave_amp[j] = tot_amp/icount
+    #
+    #     well_data[""] = ave_amp
+    #
+    #     data[well] = well_data
     
     print('...done')    
     
@@ -660,8 +670,9 @@ def main(input_dir, input_files, Ts, output_dir):
     # check extension of output file name
     root, ext = os.path.splitext(output_file)
     if not ext:
-        ext = '.xlsx'
-        output_file = root + ext
+        ext = ''
+    ext += '.xlsx'
+    output_file = root + ext
     ofile = os.path.join(output_dir,output_file)
     
     # create workbooks - open xlsx files for writing
