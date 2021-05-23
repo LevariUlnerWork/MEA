@@ -46,6 +46,7 @@ from tkinter import filedialog
 import glob
 import argparse
 import xlsxwriter
+import logging
 
 #### AXION PARSING ####
 # spikes list file fields: ",,Time (s),Electrode,Amplitude (mV)"
@@ -67,6 +68,7 @@ PLATE_TYPE_LINE_RE = '\s+Plate Type'
 TREAT_LINE_RE = 'Treatment'
 CONC_LINE_RE = 'Concentration'
 NUM_WELLS_RE = '.*MEA (?P<ptype>\\d+)'
+ISLOGFILE = True
 
 
 def parse_axion_bursts_list(path):
@@ -772,7 +774,14 @@ def analyze_file(input_file, Ts, Tw, Tc):
     return data1, data2, wells_color, plate_type, treatment, concentration
 
 
-def main(input_dir, input_files, Ts, output_dir):
+def main(input_dir, input_files, Ts, output_dir, isLogFile):
+
+    #LogFile:
+    if(isLogFile == 'n'):
+        ISLOGFILE = False
+    else:
+        ISLOGFILE = True
+
     # arg parse
     description = 'Process Axion data files.'
     epilog = 'Good luck Shira!'
@@ -787,64 +796,10 @@ def main(input_dir, input_files, Ts, output_dir):
         \t  read-all-dir: process all csv files in input-dir automatically. No GUI.\n\
         \t  e.g., from MEA/code, run:\n\
         \t  python3 analyze_brain.py -i "..\data\spike_list_1.csv" -o "..\output" -f "spk5" -Ts 120 -Tw 0.1 -Tc 10\n'
-    '''
-    parser = argparse.ArgumentParser(description=description,
-                                     epilog=epilog, usage=usage)
-    parser.add_argument("-i", "--input-dir", help="path for spikes list directory", required=True)
-    parser.add_argument("-o", "--output-dir", help="path for output directory", required=True)
-    parser.add_argument("-f", "--output-file", help="output file name", required=True)
-    parser.add_argument("-Ts", "--time-gate-spikes", help="time gate in seconds for spikes", required=True, nargs='*', type=float, metavar='Ts', dest='Ts')
-    parser.add_argument("-Tw", "--time-gate-correlation", help="time gate in seconds for spikes", required=True, nargs='*', type=float, metavar='Tw', dest='Tw')
-    parser.add_argument("-Tc", "--time-gate-correlation-total", help="time gate in seconds for correlation", required=True, nargs='*', type=float, metavar='Tc', dest='Tc')
-    parser.add_argument("-d", "--read-all-dir", action='store_true', help='process all csv files in input-dir automatically. No GUI.')
-    args = parser.parse_args()
-    
-    # input_type = args.type
-    input_dir = args.input_dir
-    output_dir = args.output_dir
-    output_file = args.output_file
 
-
-    Ts = args.Ts[0]
-    Tw = args.Tw[0]
-    Tc = args.Tc[0]
-    '''
-    # input_dir = "C:\\Users\\קוגניציה מולקולרית\\Desktop"
-    # root = tk.Tk()
-    # root.filenames = filedialog.askopenfilenames(initialdir=input_dir, title="Select file",filetypes=(("csv files", "*.csv"), ("all files", "*.*")))
-    # input_files = root.tk.splitlist(root.filenames)
-    # root.destroy()
-
-
-    #input_dir = input("Please eneter the input the location (directory/file) here")#"..\\data\\burst\\50k div12 cortex 20200804 After venom overnight(010)(000)_electrode_burst_list.csv"
     # Ts = float(input("Please enter the Ts" + '\n'))
     Tw = 0.1#float(input("Please enter the Tw"+ '\n'))
     Tc = 7214#float(input("Please enter the Tc"+ '\n'))
-    # root = tk.Tk()
-    # root.filenames = filedialog.askdirectory(initialdir=input_dir, title="Select folder")
-    # output_dir = root.filenames
-    # root.destroy()
-    '''
-    # check if a specific file is given, not a directory
-    if re.match(r'.*\.csv$', input_dir):
-        input_files = [input_dir]
-    else:
-        use_gui = False if args.read_all_dir else True
-
-        # read list of csv files for input
-        if use_gui:
-            root = tk.Tk()
-            root.filenames = filedialog.askopenfilenames(initialdir=input_dir, title="Select file",
-                                                         filetypes=(("csv files", "*.csv"), ("all files", "*.*")))
-            input_files = root.tk.splitlist(root.filenames)
-        else:
-            input_files = [f for f in glob.glob(input_dir + "\\*.csv")]
-    
-        # output dir
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-    '''
-    #output_file = The dir name + "Output"
     output_file = input_files[0].split('/') [len(input_dir.split('/')) - 3] + " Output"
     #output_file = output_file[:len(output_file) - 4] + " Output"
 
@@ -855,6 +810,8 @@ def main(input_dir, input_files, Ts, output_dir):
         ext = '.xlsx'
         output_file = root + ext
     ofile = os.path.join(output_dir, output_file)
+
+    logging.basicConfig(filename=output_file + '.log', format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG)
 
     # create workbooks - open xlsx files for writing
     print("...open output files for writing (%s)" % ofile)

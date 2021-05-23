@@ -41,7 +41,9 @@ import tkinter as tk
 from tkinter import filedialog
 import glob
 import argparse
+import time
 import xlsxwriter
+import logging
 
 
 #### AXION PARSING ####
@@ -62,19 +64,22 @@ PLATE_TYPE_LINE_RE = '\s+Plate Type'
 TREAT_LINE_RE = 'Treatment'
 CONC_LINE_RE = 'Concentration'
 NUM_WELLS_RE = '.*MEA (?P<ptype>\\d+)'
-
+ISLOGFILE = True
 
 def parse_axion_spikes_list(path):
     # Gets path of axion's _spike_list.csv file and returns a dict of WellxElectrode: spikes ts array
     try:
         with open(path, 'r', encoding='UTF-8') as spikesfile:
             # load spikes
-            print("...reading file")
+            if (ISLOGFILE):
+                logging.debug("...reading file")
             lines = spikesfile.readlines();
-            print("...done")
+            if (ISLOGFILE):
+                logging.debug("...done")
  
         # start parsing file
-        print("...parsing file")
+        if (ISLOGFILE):
+            logging.debug("...parsing file")
 
         # find header - Well Information
         iline =-1
@@ -123,7 +128,8 @@ def parse_axion_spikes_list(path):
         # parse the recording's length
         iline = 0
         didntShown = False
-        print("The record time doesn't shown in the excel file")
+        if (ISLOGFILE):
+            logging.debug("The record time doesn't shown in the excel file")
         lastTimeSec = int(float(lines[checker].split(',')[2])) + 1
         firstTimeSec = int(float(lines[1].split(',')[2]))
         rec_time = lastTimeSec - firstTimeSec
@@ -181,11 +187,13 @@ def parse_axion_spikes_list(path):
         for well in wells:
             spikes_lists[well] = {elec:np.array(sp_list) for elec,sp_list in spikes_lists[well].items() if sp_list!=[]}
             amps_lists[well] = {elec:np.array(amp_list) for elec,amp_list in amps_lists[well].items() if amp_list!=[]}
-        
-        print("...done")
+
+        if (ISLOGFILE):
+            logging.debug("...done")
         
     except IOError:
-        print("File not accessible")
+        if (ISLOGFILE):
+            logging.ERROR("File not accessible")
     
     # pack returns
     spk_data = spikes_lists, wells, elecs_per_well,\
@@ -200,7 +208,8 @@ def spikes_per_T(elec_spikes_dict, wells, electrodes, T, sample_time):
     #
     # T - time duration (s)
     # sample_time - total sample time (s)
-    print("...calculating spikes per T")
+    if (ISLOGFILE):
+        logging.debug("...calculating spikes per T")
     data = {}
     # configure histograms figure 
     #ax_size = math.ceil(math.sqrt((len(electrodes)-1))) # num of rows/cols in the MEA grid
@@ -212,8 +221,9 @@ def spikes_per_T(elec_spikes_dict, wells, electrodes, T, sample_time):
         # Add total well's spt as well
         well_data[""] = sum(well_data.values())
         data[well] = well_data
-        
-    print("...done")
+
+    if (ISLOGFILE):
+        logging.debug("...done")
     
     return data 
 
@@ -223,7 +233,8 @@ def amps_per_T(elec_amps_dict, elec_spikes_dict, wells, electrodes, T, sample_ti
     #
     # Ts - time durations (s)
     # sample_time - total sample time (s)
-    print("...calculating amplitudes per T")
+    if (ISLOGFILE):
+        logging.debug("...calculating amplitudes per T")
     data = {}
     # configure histograms figure 
     #ax_size = math.ceil(math.sqrt((len(electrodes)-1))) # num of rows/cols in the MEA grid
@@ -262,7 +273,8 @@ def amps_per_T(elec_amps_dict, elec_spikes_dict, wells, electrodes, T, sample_ti
     #
     #     data[well] = well_data
     
-    print('...done')    
+    if(ISLOGFILE):
+            logging.debug('...done')
     
     return data 
 
@@ -291,7 +303,8 @@ def write_line(ws, wb, row, line, color):
 def write_sheet(data, T, wb, ws, wells_color, plate_type,\
                 treatment, concentration):
         
-    print("...writing sheet: %s" % ws.get_name())
+    if(ISLOGFILE):
+            logging.debug("...writing sheet: %s" % ws.get_name())
     
     row = 0
         
@@ -377,12 +390,14 @@ def write_sheet(data, T, wb, ws, wells_color, plate_type,\
                     write_line(ws, wb, row, line, color)
                     row += 1                        
                             
-    print("...done")
+    if(ISLOGFILE):
+        logging.debug("...done")
 
 
 def write_sheet_transpose(data, Ts, wb, ws, wells_color, plate_type,\
                 treatment, concentration):
-    print("...writing sheet: %s" % ws.get_name())
+    if(ISLOGFILE):
+        logging.debug("...writing sheet")
 
     bold = wb.add_format({'bold': True})
     ws.write(0, 0, 'Number of Spikes per sec (Hz):', bold)
@@ -493,11 +508,13 @@ def write_sheet_transpose(data, Ts, wb, ws, wells_color, plate_type,\
                     ls = [0] * (nbins)
                     for i in range(2, len(lines)):
                         lines[i].append(ls[i - 2])
-                    print("...done")
+                    if(ISLOGFILE):
+                        logging.debug("...done")
 
     write_line_transpose(ws, wb, row, lines)
 
-    print("...done")
+    if(ISLOGFILE):
+        logging.debug("...done")
 
 
 def write_line_transpose(ws, wb, firstRow, lines):
@@ -559,9 +576,6 @@ def calc_cov_corr(data, wells, Tw, Tc):
 
                 #cov[well] = np.cov(spk_stack)    
                 c[n][well] = np.corrcoef(spk_stack)
-    
-    
-            
     return c
 
     
@@ -572,14 +586,17 @@ def analyze_file(input_file, Ts, Tw, Tc):
         wells_color, plate_type, treatment, concentration\
             = parse_axion_spikes_list(input_file)
 
-    print("...analyzing SPIKES in file: %s" % input_file)
+    if(ISLOGFILE):
+        logging.debug("...analyzing SPIKES in file: %s" % input_file)
         
     # check time gate
-    print('...sample time is: %d s' % sample_time)
+    if(ISLOGFILE):
+        logging.debug('...sample time is: %d s' % sample_time)
     if Ts > sample_time:
         #sys.exit('\n>>>>> ERROR: TIME GATE (T) IS LARGER THAN THE SAMPLE LENGTH\n')
-        print('...WARNING: time gate (T=%d s) is larger than the sample length (%d s)' % (Ts, sample_time))
-        print('...skipping analysis of this file')
+        if(ISLOGFILE):
+            logging.debug('...WARNING: time gate (T=%d s) is larger than the sample length (%d s)' % (Ts, sample_time))
+            logging.debug('...skipping analysis of this file')
         return
     
     # analyze spikes 
@@ -590,12 +607,20 @@ def analyze_file(input_file, Ts, Tw, Tc):
     #data_corr = spikes_per_T(spikes_dict, wells, electrodes, Tw, sample_time)
     #cov, corr = calc_cov_corr(data_corr, wells, Tw, Tc)    
     
-    print("...done analyzing")
+    if(ISLOGFILE):
+        logging.debug("...done analyzing")
     
     return data_spk, data_amps, wells_color, plate_type, treatment, concentration
 
 
-def main(input_dir, input_files, Ts, output_dir):
+def main(input_dir, input_files, Ts, output_dir, isLogFile):
+
+    # LogFile:
+    if (isLogFile == 'n'):
+        ISLOGFILE = False
+    else:
+        ISLOGFILE = True
+
 
     # arg parse    
     description = 'Process Axion data files.'
@@ -610,61 +635,9 @@ def main(input_dir, input_files, Ts, output_dir):
     \t  read-all-dir: process all csv files in input-dir automatically. No GUI.\n\
     \t  e.g., from MEA/code, run:\n\
     \t  python3 analyze_brain.py -i "..\data\spike_list_1.csv" -o "..\output" -f "spk5" -Ts 120 -Tw 0.1 -Tc 10\n'
-    '''
-    parser = argparse.ArgumentParser(description=description,
-                                     epilog=epilog, usage=usage)
-    #parser.add_argument("-t", "--type", help="type of input file. 1 - axion, 2 - multichannel systems", default='axion')
-    parser.add_argument("-i", "--input-dir", help="path for spikes list directory", required=True)
-    parser.add_argument("-o", "--output-dir", help="path for output directory", required=True)
-    parser.add_argument("-f", "--output-file", help="output file name", required=True)
-    parser.add_argument("-Ts", "--time-gate-spikes", help="time gate in seconds for spikes", required=True, nargs='*', type=float, metavar='Ts', dest='Ts')
-    parser.add_argument("-Tw", "--time-gate-correlation", help="time gate in seconds for spikes", required=True, nargs='*', type=float, metavar='Tw', dest='Tw')
-    parser.add_argument("-Tc", "--time-gate-correlation-total", help="time gate in seconds for correlation", required=True, nargs='*', type=float, metavar='Tc', dest='Tc')
-    parser.add_argument("-d", "--read-all-dir", action='store_true', help='process all csv files in input-dir automatically. No GUI.')
-    args = parser.parse_args()
-    
-    #input_type = args.type    
-    input_dir = args.input_dir    
-    output_dir = args.output_dir
-    output_file = args.output_file
-    Ts = args.Ts[0]
-    Tw = args.Tw[0]
-    Tc = args.Tc[0]
-    '''
-    # input_dir = "C:\\Users\\קוגניציה מולקולרית\\Desktop"
-    # root = tk.Tk()
-    # root.filenames = filedialog.askopenfilenames(initialdir=input_dir, title="Select file",filetypes=(("csv files", "*.csv"), ("all files", "*.*")))
-    # input_files = root.tk.splitlist(root.filenames)
-    # root.destroy()
-
-
-    #input_dir = input("Please eneter the input the location (directory/file) here")#"..\\data\\burst\\50k div12 cortex 20200804 After venom overnight(010)(000)_electrode_burst_list.csv"
     # Ts = float(input("Please enter the Ts" + '\n'))
     Tw = 0.1 #float(input("Please enter the Tw"+ '\n'))
     Tc = 10 #float(input("Please enter the Tc"+ '\n'))
-    # root = tk.Tk()
-    # root.filenames = filedialog.askdirectory(initialdir=input_dir, title="Select folder")
-    # output_dir = root.filenames
-    # root.destroy()
-    '''
-    # check if a specific file is given, not a directory
-    if re.match(r'.*\.csv$',input_dir): 
-        input_files = [input_dir]
-    else:        
-        use_gui = False if args.read_all_dir else True
-    
-        # read list of csv files for input
-        if use_gui:        
-            root = tk.Tk()
-            root.filenames = filedialog.askopenfilenames(initialdir = input_dir, title = "Select file", filetypes = (("csv files","*.csv"),("all files","*.*")))    
-            input_files = root.tk.splitlist(root.filenames)
-        else:        
-            input_files = [f for f in glob.glob(input_dir + "\\*.csv")]       
-    
-    # output dir
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    '''
     output_file = input_files[0].split('/') [len(input_dir.split('/')) - 3] + " Output"
 
     # check extension of output file name
@@ -674,14 +647,19 @@ def main(input_dir, input_files, Ts, output_dir):
     ext += '.xlsx'
     output_file = root + ext
     ofile = os.path.join(output_dir,output_file)
-    
+
+    logging.basicConfig(filename=output_file+'.log', format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG)
+
     # create workbooks - open xlsx files for writing
-    print("...open output files for writing (%s)" % ofile)        
+    if(ISLOGFILE):
+        logText = "...open output files for writing"
+        logging.debug(logText)
     ofnameSPK = ofile.replace(ext, '_SPK' + ext)
     wbSPK = xlsxwriter.Workbook(ofnameSPK,{'constant_memory': True})
     ofnameAMP = ofile.replace(ext, '_AMP' + ext)
     wbAMP = xlsxwriter.Workbook(ofnameAMP,{'constant_memory': True})
-    print("...done") 
+    if (ISLOGFILE):
+        logging.debug("...done")
     
     # loop over input files
     for input_file in sorted(input_files):
@@ -705,15 +683,17 @@ def main(input_dir, input_files, Ts, output_dir):
             write_sheet_transpose(data1, Ts, wbSPK, wsSPK, wells_color, plate_type, treat, conc)
             write_sheet_transpose(data2, Ts, wbAMP, wsAMP, wells_color, plate_type, treat, conc)
         except:
-            print("This file is empty and shouldn't being analyze")
-            print("filename: " + input_file)
+            if (ISLOGFILE):
+                logging.debug("This file is empty and shouldn't being analyze")
+                logging.debug("filename: " + input_file)
             continue
 
-
-    print("...closing output files")
+    if (ISLOGFILE):
+        logging.debug("...closing output files")
     wbSPK.close()
     wbAMP.close()
-    print("...DONE\n\n")
+    if (ISLOGFILE):
+        logging.debug("...DONE\n\n")
 
 if __name__=='__main__':
     

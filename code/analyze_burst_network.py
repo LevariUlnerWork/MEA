@@ -46,6 +46,7 @@ from tkinter import filedialog
 import glob
 import argparse
 import xlsxwriter
+import logging
 
 #### AXION PARSING ####
 # spikes list file fields: ",,Time (s),Electrode,Amplitude (mV)"
@@ -70,6 +71,7 @@ PLATE_TYPE_LINE_RE = '\s+Plate Type'
 TREAT_LINE_RE = 'Treatment'
 CONC_LINE_RE = 'Concentration'
 NUM_WELLS_RE = '.*MEA (?P<ptype>\\d+)'
+ISLOGFILE = True
 
 
 def parse_axion_bursts_list(path):
@@ -984,7 +986,14 @@ def analyze_file(input_file, Ts, Tw, Tc):
     return data1, data2, data3, data4, data5, wells_color, plate_type, treatment, concentration
 
 
-def main(input_dir, input_files, Ts, output_dir):
+def main(input_dir, input_files, Ts, output_dir, isLogFile):
+
+    # LogFile:
+    if (isLogFile == 'n'):
+        ISLOGFILE = False
+    else:
+        ISLOGFILE = True
+
     # arg parse
     description = 'Process Axion data files.'
     epilog = 'Good luck Shira!'
@@ -1067,6 +1076,8 @@ def main(input_dir, input_files, Ts, output_dir):
         ext = '.xlsx'
         output_file = root + ext
     ofile = os.path.join(output_dir, output_file)
+
+    logging.basicConfig(filename=output_file + '.log', format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG)
 
     # create workbooks - open xlsx files for writing
     print("...open output files for writing (%s)" % ofile)

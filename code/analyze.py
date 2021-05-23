@@ -64,6 +64,9 @@ def main():
     root.filenames = filedialog.askdirectory(initialdir=input_dir, title="Select folder")
     output_dir = root.filenames
     root.destroy()
+
+    isLogFile = input("Do you want a log file? (y/n)")
+
     for file in input_files:
         filenameList = file.split('/')
         filename = filenameList[len(filenameList) - 1].split(".")[0]
@@ -79,11 +82,11 @@ def main():
         elif (re.search("spike_list", file )!= None):
             spikes_files.append(file)
     if(len(burst_files) > 0):
-        analyze_burst.main(input_dir, burst_files, Ts,output_dir)
+        analyze_burst.main(input_dir, burst_files, Ts,output_dir, isLogFile)
     if (len(burst_network_files) > 0):
-        analyze_burst_network.main(input_dir,  burst_network_files, Ts, output_dir)
+        analyze_burst_network.main(input_dir,  burst_network_files, Ts, output_dir, isLogFile)
     if(len(spikes_files) > 0):
-        analyze_brain.main(input_dir, spikes_files, Ts,output_dir)
+        analyze_brain.main(input_dir, spikes_files, Ts,output_dir, isLogFile)
 
     if (len(error_files) > 0):
         print ("The following files have more than 32 characters and didn't analyzed.")
