@@ -133,7 +133,7 @@ def parse_axion_bursts_list(path):
         print("The record time doesn't shown in the excel file")
         lastTimeSec = int(float(lines[checker].split(',')[2]))+1
         firstTimeSec = int(float(lines[1].split(',')[2]))
-        rec_time = lastTimeSec - firstTimeSec
+        rec_time = lastTimeSec
         didntShown = True
         #sys.exit('\n>>>>> ERROR: COULD NOT FIND RECORDING TIME (REQUESTED/ACTUAL DURATION OF MEASUREMENT)\n')
         time_match = {}
@@ -176,8 +176,9 @@ def parse_axion_bursts_list(path):
         timestamps_lists = {well: copy.deepcopy(elecs) for well in wells}
         bursts_lists = {well: copy.deepcopy(elecs) for well in wells}
         durations_lists = {well: copy.deepcopy(elecs) for well in wells}
-        SAMPLE_DELAY = float(data[1][TIMESTAMP_IND])
-        SAMPLE_DELAY = float('%.1f' % (SAMPLE_DELAY))
+        # SAMPLE_DELAY = float(data[1][TIMESTAMP_IND])
+        # SAMPLE_DELAY = float('%.1f' % (SAMPLE_DELAY))
+        SAMPLE_DELAY = 0
         for row in data:
             well, elec = row[ELECTRODE_IND].split('_')
             ts = float(row[TIMESTAMP_IND]) - SAMPLE_DELAY # SAMPLE_DELAY made to reset the time
@@ -251,18 +252,6 @@ def bursts_per_T(elec_timestamps_dict, elec_bursts_dict, wells, electrodes, Ts, 
             timestamp = elec_timestamps_dict[well][elec]  # time stamps of spikes
             bursts = elec_bursts_dict[well][elec]
             well_data[elec] = np.nan_to_num(stats.binned_statistic(timestamp, bursts, statistic='mean', bins=bins)[0])
-            # well_data = {elec: np.histogram(spikes, bins)[0] for elec, spikes in elec_amps_dict[well].items()}
-
-            # if T in plotting_Ts:
-            #     # plot histograms
-            #     fig, axs = plt.subplots(ax_size,ax_size, figsize=(25,15))
-            #     fig.suptitle("Well %s, T = %.3f" %(well, T))
-            #     for elec, spt in well_data.items():
-            #         x, y = int(elec[0])-1, int(elec[1])-1
-            #         axs[x, y].set_title(elec)
-            #         axs[x, y].plot(bins[:-1], spt)
-            #     #plt.savefig(os.path.join(output_dir,"hist_%s_%.3f.png" %(well,T)))
-            #     plt.close(fig)
 
             # Add mean well's durations as well
             tot_all_bur = np.zeros(len(bins) - 1)

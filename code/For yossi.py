@@ -8,7 +8,7 @@ from tkinter import filedialog
 #                                              filetypes=(("csv files", "*.csv"), ("all files", "*.*")))
 # input_file = root.tk.splitlist(root.filenames)
 # root.destroy()
-path = 'C:/Users/קוגניציה מולקולרית/Desktop/Yossi/50k div 11 cortex venom + D1(000)_spike_list.csv'
+path = 'C:/Users/levco/Downloads/V+D1(000)spike_list.csv'
 with open(path, 'r', encoding='UTF-8') as burstsfile:
     # load spikes
     print("...reading file")
@@ -27,7 +27,7 @@ c = 0
 ext = '.xlsx'
 ofnameBRST = path.replace(ext, str(c) + ext)
 writeFirstLine=True
-filename = f'C:/Users/קוגניציה מולקולרית/Desktop/Lev Script Output/split files/spike_list_yossi{c}.csv'
+filename = f'C:/Users/levco/Desktop/מחקר שירה/Yossi/spike_list_yossi{c}.csv'
 
 for line in range (len(lines)):
     with open (filename, 'a' ,newline='', encoding='utf-8') as csvFile:
@@ -42,7 +42,7 @@ for line in range (len(lines)):
                 data_to_save[37+i][len(data_to_save[37+i])-1] = data_to_save[37+i][len(data_to_save[37+i])-1].replace('\n','')
                 w.writerow(data_to_save[37+i])
             c += 1
-            filename = f'C:/Users/קוגניציה מולקולרית/Desktop/Lev Script Output/split files/spike_list_yossi{c}.csv'
+            filename = f'C:/Users/levco/Desktop/מחקר שירה/Yossi/spike_list_yossi{c}.csv'
             print("Changing file")
             writeFirstLine = True
 

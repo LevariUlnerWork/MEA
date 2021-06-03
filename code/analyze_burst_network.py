@@ -178,8 +178,9 @@ def parse_axion_bursts_list(path):
         number_of_elec_lists = {well: [] for well in wells}
         spikes_per_elec_avg_lists = {well: [] for well in wells}
         spikes_per_elec_std_lists = {well: [] for well in wells}
-        SAMPLE_DELAY = float(data[1][TIMESTAMP_IND])
-        SAMPLE_DELAY = float('%.1f' % (SAMPLE_DELAY))
+        # SAMPLE_DELAY = float(data[1][TIMESTAMP_IND])
+        # SAMPLE_DELAY = float('%.1f' % (SAMPLE_DELAY))
+        SAMPLE_DELAY=0
         for row in data:
             well = row[WELL_IND]
             ts = float(row[TIMESTAMP_IND]) - SAMPLE_DELAY # SAMPLE_DELAY made to reset the time
@@ -281,7 +282,6 @@ def bursts_per_T(well_timestamps_dict, well_bursts_dict, wells, Ts, sample_time)
             for j in range(len(bins) - 1):
                 tot_bur = 0.0
                 icount = 0
-
                 if well_data[j] > 0:
                     tot_bur = well_data[j]
                     icount = 1

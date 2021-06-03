@@ -64,7 +64,7 @@ PLATE_TYPE_LINE_RE = '\s+Plate Type'
 TREAT_LINE_RE = 'Treatment'
 CONC_LINE_RE = 'Concentration'
 NUM_WELLS_RE = '.*MEA (?P<ptype>\\d+)'
-ISLOGFILE = True
+ISLOGFILE = False
 
 def parse_axion_spikes_list(path):
     # Gets path of axion's _spike_list.csv file and returns a dict of WellxElectrode: spikes ts array
@@ -174,8 +174,9 @@ def parse_axion_spikes_list(path):
         #import pdb; pdb.set_trace()
         spikes_lists = {well: copy.deepcopy(elecs) for well in wells}
         amps_lists = {well: copy.deepcopy(elecs) for well in wells}
-        SAMPLE_DELAY = float(data[1][TIMESTAMP_IND])
-        SAMPLE_DELAY = float('%.1f' % (SAMPLE_DELAY))
+        # SAMPLE_DELAY = float(data[1][TIMESTAMP_IND])
+        # SAMPLE_DELAY = float('%.1f' % (SAMPLE_DELAY))
+        SAMPLE_DELAY=0
         for row in data:
             well, elec = row[ELECTRODE_IND].split('_')
             ts = float(row[TIMESTAMP_IND]) - SAMPLE_DELAY # SAMPLE_DELAY made to reset the time
@@ -239,39 +240,36 @@ def amps_per_T(elec_amps_dict, elec_spikes_dict, wells, electrodes, T, sample_ti
     # configure histograms figure 
     #ax_size = math.ceil(math.sqrt((len(electrodes)-1))) # num of rows/cols in the MEA grid
 
-    bins = np.arange(0, sample_time + 1, T)
-    for well in wells:
-        well_data = {elec: np.histogram(amps, bins)[0] for elec, amps in elec_amps_dict[well].items()}
-
-        # Add total well's spt as well
-        well_data[""] = sum(well_data.values())
-        data[well] = well_data
-
+    # bins = np.arange(0, sample_time + 1, T)
+    # for well in wells:
+    #     well_data = {elec: np.histogram(amps, bins)[0] for elec, amps in elec_amps_dict[well].items()}
+    #
+    #     # Add total well's spt as well
+    #     well_data[""] = sum(well_data.values())
+    #     data[well] = well_data
+    #
 
     # ****************Before:********************
-    # bins = np.arange(0, sample_time+1, T)
-    # for well in wells:
-    #     well_data = {}
-    #     for elec in elec_amps_dict[well].keys():
-    #         spikes = elec_spikes_dict[well][elec] # time stamps of spikes
-    #         amps   = elec_amps_dict[well][elec]
-    #         well_data[elec] = np.nan_to_num(stats.binned_statistic(spikes, amps, statistic='mean', bins=bins)[0])
-    #
-    #     # Add mean well's amp as well
-    #     ave_amp = np.zeros(len(bins)-1)
-    #     for j in range(len(bins)-1):
-    #         tot_amp = 0.0
-    #         icount = 0
-    #         for elec in well_data.keys():
-    #             if well_data[elec][j] > 0:
-    #                 tot_amp += well_data[elec][j]
-    #                 icount += 1
-    #         if icount > 0:
-    #             ave_amp[j] = tot_amp/icount
-    #
-    #     well_data[""] = ave_amp
-    #
-    #     data[well] = well_data
+    bins = np.arange(0, sample_time+1, T)
+    for well in wells:
+        well_data = {}
+        for elec in elec_amps_dict[well].keys():
+            spikes = elec_spikes_dict[well][elec] # time stamps of spikes
+            amps   = elec_amps_dict[well][elec]
+            well_data[elec] = np.nan_to_num(stats.binned_statistic(spikes, amps, statistic='mean', bins=bins)[0])
+
+        # Add mean well's amp as well
+        ave_amp = np.zeros(len(bins)-1)
+        for j in range(len(bins)-1):
+            tot_amp = 0.0
+            for elec in well_data.keys():
+                if well_data[elec][j] > 0:
+                    tot_amp += well_data[elec][j]
+            ave_amp[j] = tot_amp
+
+        well_data[""] = ave_amp
+
+        data[well] = well_data
     
     if(ISLOGFILE):
             logging.debug('...done')
@@ -395,7 +393,7 @@ def write_sheet(data, T, wb, ws, wells_color, plate_type,\
 
 
 def write_sheet_transpose(data, Ts, wb, ws, wells_color, plate_type,\
-                treatment, concentration):
+                treatment, concentration,isSPK):
     if(ISLOGFILE):
         logging.debug("...writing sheet")
 
@@ -435,7 +433,10 @@ def write_sheet_transpose(data, Ts, wb, ws, wells_color, plate_type,\
                         lines[0].append([well] + [color])
                         lines[1].append(tc)
                         ln = electrodes[elec].tolist()
-                        ls = [(x/xtime[0]) if x > 0 else 0 for x in ln]
+                        if(isSPK):
+                            ls = [(x/xtime[0]) if x > 0 else 0 for x in ln]
+                        else:
+                            ls = [(x) if x > 0 else 0 for x in ln]
                         # write
                         for i in range (2, len(lines)):
                             lines[i].append(ls[i-2])
@@ -483,7 +484,10 @@ def write_sheet_transpose(data, Ts, wb, ws, wells_color, plate_type,\
                     lines[1].append(tc)
                     if elec in electrodes.keys():
                         line = electrodes[elec].tolist()
-                        ls = [(x/xtime[0]) if x > 0 else 0 for x in line]
+                        if (isSPK):
+                            ls = [(x/xtime[0]) if x > 0 else 0 for x in line]
+                        else:
+                            ls = [(x) if x > 0 else 0 for x in line]
                         for i in range(2, len(lines)):
                             lines[i].append(ls[i - 2])
                     else:
@@ -680,8 +684,8 @@ def main(input_dir, input_files, Ts, output_dir, isLogFile):
             wsSPK = wbSPK.add_worksheet(root)
             wsAMP = wbAMP.add_worksheet(root)
 
-            write_sheet_transpose(data1, Ts, wbSPK, wsSPK, wells_color, plate_type, treat, conc)
-            write_sheet_transpose(data2, Ts, wbAMP, wsAMP, wells_color, plate_type, treat, conc)
+            write_sheet_transpose(data1, Ts, wbSPK, wsSPK, wells_color, plate_type, treat, conc,True)
+            write_sheet_transpose(data2, Ts, wbAMP, wsAMP, wells_color, plate_type, treat, conc,False)
         except:
             if (ISLOGFILE):
                 logging.debug("This file is empty and shouldn't being analyze")
