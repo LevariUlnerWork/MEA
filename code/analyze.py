@@ -4,28 +4,13 @@ This file is the main file for the MEA project, it will active the specific scri
 
 
 
-import numpy as np
-import sys
-import csv
 import re
 import matplotlib
-
 matplotlib.use('agg')
 import os
-import importlib
-import matplotlib.pyplot as plt
-import seaborn as sns
-import math
-import copy
-import os
-from collections import defaultdict, OrderedDict
-from scipy import stats
 import tkinter as tk
 from tkinter import filedialog
-import glob
-import argparse
 import time
-import xlsxwriter
 
 
 

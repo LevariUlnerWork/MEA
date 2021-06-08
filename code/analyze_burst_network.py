@@ -6,14 +6,6 @@ This module reads a spike list form a csv file in the form of time-stamps and,
 given time gates T1, .. Tn, it calculates the mean number of spikes per time gate
 and its variance.
 
-ToDo:
-* Replace input parsing with argparse
-* Output raw histograms
-
-
-Things to note:
-* Output file is showing Ts with 3 decimal points. Should it be more?
-* For Axion's spike_list.csv analysis: the data file contains a 9 lines footer, which this script ignores. Update that if anything changes.
 """
 
 # Owned
